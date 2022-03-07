@@ -1,6 +1,6 @@
-fn main() {
-    println!("Hello, world!");
-    let a =333 ;
-    let b = String::from("hello world"); 
-         
+use zero2prod::run;
+
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    run().await
 }
