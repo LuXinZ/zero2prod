@@ -3,7 +3,7 @@ use actix_web::{web, App, HttpResponse, HttpServer};
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
-    emial : String,
+    email : String,
     name : String 
 }
 
