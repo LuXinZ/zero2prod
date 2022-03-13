@@ -1,8 +1,8 @@
-use sqlx::{PgPool, Connection, Executor, PgExecutor, PgConnection};
+use sqlx::{Connection, Executor, PgConnection, PgExecutor, PgPool};
 use std::net::TcpListener;
+use uuid::Uuid;
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::run;
-use uuid::Uuid;
 // !tests/health_check.rs
 #[tokio::test]
 async fn health_check_works() {
@@ -74,7 +74,7 @@ async fn spawn_app() -> TestApp {
     let mut configuration = get_configuration().expect("failed to read configuration");
     configuration.database.database_name = Uuid::new_v4().to_string();
     let connection_pool = configure_database(&configuration.database).await;
-     
+
     let server = run(listener, connection_pool.clone()).expect("faile to bind address ");
     let _ = tokio::spawn(server);
     TestApp {
@@ -82,12 +82,22 @@ async fn spawn_app() -> TestApp {
         db_pool: connection_pool,
     }
 }
-pub async fn configure_database(config: &DatabaseSettings) -> PgPool{
-    // cerate databse 
-    let mut connection = PgConnection::connect(&config.connection_string_without_db()).await.expect("failed to connect to postgres");
-    connection.execute(format!(r#"CREATE DATABASE "{}";"#,config.database_name).as_str()).await.expect("fialed to craete databse ");
-    // migrate database 
-    let connection_pool = PgPool::connect(&config.connection_string()).await.expect("failed to connect to progress ");
-    sqlx::migrate!("./migrations").run(&connection_pool).await.expect("failed to migrate the database ");
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    // cerate databse
+    let mut connection = PgConnection::connect(&config.connection_string_without_db())
+        .await
+        .expect("failed to connect to postgres");
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+        .await
+        .expect("fialed to craete databse ");
+    // migrate database
+    let connection_pool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("failed to connect to progress ");
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("failed to migrate the database ");
     connection_pool
 }
