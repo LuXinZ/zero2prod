@@ -1,6 +1,5 @@
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
-use sqlx::{Connection, Executor, PgConnection, PgExecutor, PgPool};
+use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
@@ -80,7 +79,31 @@ async fn subscribe_retruns_a_400_when_data_is_missing() {
         )
     }
 }
-
+#[tokio::test]
+async fn subscribe_retruns_a_200_when_fields_are_present_but_empty() {
+    let app = spawn_app().await;
+    let client = reqwest::Client::new();
+    let test_cases = vec![
+        ("name=&email=ursula_le_guin%40gmail.com", "empty name"),
+        ("name=Ursula&email=", "empty email"),
+        ("name=Ursula&email=definitely-not-an-email", "invalid email"),
+    ];
+    for (body, description) in test_cases {
+        let response = client
+            .post(&format!("{}/subscriptions", &app.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+            .expect("failed to execute request");
+        assert_eq!(
+            200,
+            response.status().as_u16(),
+            "the api did not retrun 200 ok when the payload was {}",
+            description
+        );
+    }
+}
 async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
     let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind random port");
@@ -100,7 +123,7 @@ async fn spawn_app() -> TestApp {
 }
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     // cerate databse
-    let mut connection = PgConnection::connect(&config.connection_string_without_db().expose_secret())
+    let mut connection = PgConnection::connect_with(&config.without_db())
         .await
         .expect("failed to connect to postgres");
     connection
@@ -108,7 +131,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .await
         .expect("fialed to craete databse ");
     // migrate database
-    let connection_pool = PgPool::connect(&config.connection_string().expose_secret())
+    let connection_pool = PgPool::connect_with(config.with_db())
         .await
         .expect("failed to connect to progress ");
     sqlx::migrate!("./migrations")
