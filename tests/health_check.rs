@@ -97,7 +97,7 @@ async fn subscribe_retruns_a_200_when_fields_are_present_but_empty() {
             .await
             .expect("failed to execute request");
         assert_eq!(
-            200,
+            400,
             response.status().as_u16(),
             "the api did not retrun 200 ok when the payload was {}",
             description
